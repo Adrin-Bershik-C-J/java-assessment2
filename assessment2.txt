@@ -1,0 +1,436 @@
+README.md:
+# 🛠️ SupportDeskPro
+
+A **Spring Boot**-based **Support Ticket Management System** that allows fetching support tickets and users from a PostgreSQL database. This project demonstrates the use of **Spring Boot, JPA, REST API, and PostgreSQL** with a clean layered architecture.
+
+---
+
+## 📌 Project Overview
+SupportDeskPro is a lightweight support ticket system where:
+- Users can have multiple support tickets.
+- Tickets have statuses (`Open`, `Resolved`, etc.).
+- The API provides endpoints to fetch users, tickets, and user-specific tickets.
+
+---
+
+## 📂 Project Structure
+```
+Directory structure:
+└── adrin-bershik-c-j-java-assessment2/
+    ├── mvnw
+    ├── mvnw.cmd
+    ├── pom.xml
+    ├── src/
+    │   ├── main/
+    │   │   ├── java/
+    │   │   │   └── com/
+    │   │   │       └── example/
+    │   │   │           └── SupportDeskPro/
+    │   │   │               ├── SupportDeskProApplication.java
+    │   │   │               ├── controller/
+    │   │   │               │   ├── TicketController.java
+    │   │   │               │   └── UserController.java
+    │   │   │               ├── entity/
+    │   │   │               │   ├── Ticket.java
+    │   │   │               │   └── User.java
+    │   │   │               ├── exceptions/
+    │   │   │               │   ├── InvalidStatusException.java
+    │   │   │               │   └── TicketNotFoundException.java
+    │   │   │               ├── repository/
+    │   │   │               │   ├── TicketRepository.java
+    │   │   │               │   └── UserRepository.java
+    │   │   │               └── service/
+    │   │   │                   ├── TicketService.java
+    │   │   │                   └── UserService.java
+    │   │   └── resources/
+    │   │       └── application.properties
+    │   └── test/
+    │       └── java/
+    │           └── com/
+    │               └── example/
+    │                   └── SupportDeskPro/
+    │                       └── SupportDeskProApplicationTests.java
+    └── .mvn/
+        └── wrapper/
+            └── maven-wrapper.properties
+
+```
+
+---
+
+## ⚙️ Tech Stack
+- **Java 17+**
+- **Spring Boot 3.x**
+- **Spring Data JPA**
+- **PostgreSQL**
+- **Maven**
+
+---
+
+## 🗄️ Database Setup
+
+### 1️⃣ Create Database
+```sql
+CREATE DATABASE db;
+```
+```
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+```
+```
+CREATE TABLE ticket (
+    ticket_id SERIAL PRIMARY KEY,
+    description TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'Open',
+    user_id BIGINT REFERENCES users(user_id)
+);
+
+INSERT INTO users (name) VALUES ('Alice'), ('Bob'), ('Charlie');
+INSERT INTO ticket (description, status, user_id) VALUES
+('Login issue on portal', 'Open', 1),
+('Payment failure in checkout', 'Open', 2),
+('UI bug on dashboard', 'Resolved', 1),
+('Email notifications not working', 'Open', 3);
+```
+---
+
+## Configuration
+```
+Edit src/main/resources/application.properties:
+spring.application.name=SupportDeskPro
+spring.datasource.url=jdbc:postgresql://localhost:5432/db
+spring.datasource.username=postgres
+spring.datasource.password=YOUR_PASSWORD
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+```
+### How to run
+```
+# 1. Clone the repository
+git clone https://github.com/your-repo/SupportDeskPro.git
+cd SupportDeskPro
+
+# 2. Build and run the Spring Boot app
+mvn spring-boot:run
+```
+
+TicketController.java:
+package com.example.SupportDeskPro.controller;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.SupportDeskPro.entity.Ticket;
+import com.example.SupportDeskPro.service.TicketService;
+
+@RestController
+@RequestMapping("/api/tickets")
+public class TicketController {
+
+    TicketService ticketService;
+
+    public TicketController(TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
+
+    @GetMapping
+    public List<Ticket> getAllTickets() {
+        return ticketService.getAllTickets();
+    }
+
+    @GetMapping("/{ticketId}")
+    public Ticket getTicketsById(@PathVariable Long ticketId) {
+        return ticketService.getTicketsById(ticketId);
+    }
+}
+
+UserController.java
+package com.example.SupportDeskPro.controller;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.SupportDeskPro.entity.User;
+import com.example.SupportDeskPro.service.UserService;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+    UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping
+    public List<User> getAllUsers() {
+        return userService.getAllUsers();
+    }
+
+    @GetMapping("/{userId}")
+    public User getUsersById(@PathVariable Long userId) {
+        return userService.getUsersById(userId);
+    }
+}
+
+Ticket.java
+package com.example.SupportDeskPro.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+
+@Entity
+public class Ticket {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long ticketId;
+    private String description;
+    private String status;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User createdBy;
+
+    public Ticket(Long ticketId, String description, String status) {
+        this.ticketId = ticketId;
+        this.description = description;
+        this.status = status;
+    }
+
+    public Ticket() {
+    }
+
+    public Long getTicketId() {
+        return ticketId;
+    }
+
+    public void setTicketId(Long ticketId) {
+        this.ticketId = ticketId;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+}
+
+User.java
+package com.example.SupportDeskPro.entity;
+
+import java.util.List;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long userId;
+    private String name;
+
+    public User(Long userId, String name, List<Ticket> tickets) {
+        this.userId = userId;
+        this.name = name;
+        this.tickets = tickets;
+    }
+
+    public User() {
+    }
+
+    @OneToMany(mappedBy = "createdBy")
+    private List<Ticket> tickets;
+
+    public List<Ticket> getTickets() {
+        return tickets;
+    }
+
+    public void setTickets(List<Ticket> tickets) {
+        this.tickets = tickets;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+}
+
+InvalidStatusException.java
+package com.example.SupportDeskPro.exceptions;
+
+public class InvalidStatusException extends Exception {
+    public InvalidStatusException(String message) {
+        super(message);
+    }
+}
+
+TicketNotFoundException.java
+package com.example.SupportDeskPro.exceptions;
+
+public class TicketNotFoundException extends RuntimeException  {
+
+    public TicketNotFoundException(String message) {
+        super(message);
+    }
+
+}
+
+TicketRepository.java
+package com.example.SupportDeskPro.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.SupportDeskPro.entity.Ticket;
+
+public interface TicketRepository extends JpaRepository<Ticket, Long> {
+
+}
+
+UserRepository.java
+package com.example.SupportDeskPro.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.SupportDeskPro.entity.Ticket;
+
+public interface TicketRepository extends JpaRepository<Ticket, Long> {
+
+}
+
+
+TicketService.java
+package com.example.SupportDeskPro.service;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.example.SupportDeskPro.entity.Ticket;
+import com.example.SupportDeskPro.exceptions.TicketNotFoundException;
+import com.example.SupportDeskPro.repository.TicketRepository;
+
+@Service
+public class TicketService {
+
+    TicketRepository ticketRepository;
+
+    public TicketService(TicketRepository ticketRepository) {
+        this.ticketRepository = ticketRepository;
+    }
+
+    public List<Ticket> getAllTickets() {
+        return ticketRepository.findAll();
+    }
+
+    public Ticket getTicketsById(Long ticketId) {
+        return ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found with ID: " + ticketId));
+    }
+
+}
+
+
+UserService.java
+package com.example.SupportDeskPro.service;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import com.example.SupportDeskPro.entity.User;
+import com.example.SupportDeskPro.repository.UserRepository;
+
+@Service
+public class UserService {
+
+    UserRepository userRepository;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public User getUsersById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+    }
+
+}
+
+SupportDeskProApplication.java
+package com.example.SupportDeskPro;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SupportDeskProApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SupportDeskProApplication.class, args);
+	}
+
+}
+
+
+application.properties
+spring.application.name=SupportDeskPro
+spring.datasource.url=jdbc:postgresql://localhost:5432/db
+spring.datasource.username=postgres
+spring.datasource.password=Adrin@123
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA settings
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.default_schema=public
