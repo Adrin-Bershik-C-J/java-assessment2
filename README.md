@@ -86,7 +86,7 @@ CREATE TABLE ticket (
     user_id BIGINT REFERENCES users(user_id)
 );
 
-```INSERT INTO users (name) VALUES ('Alice'), ('Bob'), ('Charlie');
+INSERT INTO users (name) VALUES ('Alice'), ('Bob'), ('Charlie');
 INSERT INTO ticket (description, status, user_id) VALUES
 ('Login issue on portal', 'Open', 1),
 ('Payment failure in checkout', 'Open', 2),
